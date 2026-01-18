@@ -75,6 +75,19 @@
             color: white;
         }
 
+        .event-cell.has-event[draggable="true"] {
+            cursor: move;
+        }
+
+        .event-cell.drag-over {
+            background: #2ecc71;
+            border: 2px dashed #27ae60;
+        }
+
+        .event-cell.dragging {
+            opacity: 0.5;
+        }
+
         .event-content {
             font-size: 13px;
             word-wrap: break-word;
@@ -148,6 +161,15 @@
             background: #229954;
         }
 
+        .duplicate-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .duplicate-btn:hover {
+            background: #2980b9;
+        }
+
         .delete-btn {
             background: #e74c3c;
             color: white;
@@ -165,11 +187,27 @@
         .cancel-btn:hover {
             background: #7f8c8d;
         }
+
+        .instructions {
+            background: #ecf0f1;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
+        .instructions strong {
+            color: #2980b9;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Weekly Timetable</h1>
+        <div class="instructions">
+            <strong>Click</strong> any cell to add/edit events | <strong>Drag & Drop</strong> events to move them | <strong>Duplicate</strong> to copy events to other slots
+        </div>
         <div class="timetable" id="timetable"></div>
     </div>
 
@@ -179,6 +217,7 @@
             <textarea id="event-input" placeholder="Enter event details..."></textarea>
             <div class="button-group">
                 <button class="save-btn" onclick="saveEvent()">Save</button>
+                <button class="duplicate-btn" onclick="duplicateEvent()">Duplicate</button>
                 <button class="delete-btn" onclick="deleteEvent()">Delete</button>
                 <button class="cancel-btn" onclick="closeModal()">Cancel</button>
             </div>
@@ -199,6 +238,8 @@
 
         const timetable = {};
         let currentCell = null;
+        let draggedCell = null;
+        let isDuplicating = false;
 
         function initTimetable() {
             const container = document.getElementById('timetable');
@@ -226,6 +267,13 @@
                     cell.dataset.day = days[i];
                     cell.dataset.time = time;
                     cell.onclick = () => openModal(cell);
+                    
+                    // Add drag and drop functionality
+                    cell.addEventListener('dragstart', handleDragStart);
+                    cell.addEventListener('dragend', handleDragEnd);
+                    cell.addEventListener('dragover', handleDragOver);
+                    cell.addEventListener('dragleave', handleDragLeave);
+                    cell.addEventListener('drop', handleDrop);
                     
                     const content = document.createElement('div');
                     content.className = 'event-content';
@@ -290,9 +338,131 @@
             
             if (text) {
                 cell.classList.add('has-event');
+                cell.setAttribute('draggable', 'true');
             } else {
                 cell.classList.remove('has-event');
+                cell.removeAttribute('draggable');
             }
+        }
+
+        // Drag and Drop Functions
+        function handleDragStart(e) {
+            draggedCell = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.event-cell').forEach(cell => {
+                cell.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+            return false;
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            this.classList.remove('drag-over');
+            
+            if (draggedCell !== this) {
+                const sourceDay = draggedCell.dataset.day;
+                const sourceTime = draggedCell.dataset.time;
+                const targetDay = this.dataset.day;
+                const targetTime = this.dataset.time;
+                
+                const sourceText = timetable[sourceDay][sourceTime];
+                
+                // Move the event
+                timetable[targetDay][targetTime] = sourceText;
+                timetable[sourceDay][sourceTime] = '';
+                
+                updateCell(this, sourceText);
+                updateCell(draggedCell, '');
+                saveToStorage();
+            }
+            
+            return false;
+        }
+
+        // Duplicate Function
+        function duplicateEvent() {
+            if (!currentCell) return;
+            
+            const day = currentCell.dataset.day;
+            const time = currentCell.dataset.time;
+            const eventText = timetable[day][time];
+            
+            if (!eventText) {
+                alert('No event to duplicate!');
+                return;
+            }
+            
+            isDuplicating = true;
+            closeModal();
+            
+            // Change cursor and show instruction
+            document.body.style.cursor = 'copy';
+            const instruction = document.createElement('div');
+            instruction.id = 'duplicate-instruction';
+            instruction.style.cssText = 'position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #3498db; color: white; padding: 15px 30px; border-radius: 4px; z-index: 2000; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);';
+            instruction.textContent = 'Click on a cell to duplicate the event there';
+            document.body.appendChild(instruction);
+            
+            // Add click listener to all cells
+            const cells = document.querySelectorAll('.event-cell');
+            cells.forEach(cell => {
+                cell.addEventListener('click', handleDuplicateClick);
+            });
+            
+            // Store the event text to duplicate
+            window.duplicateText = eventText;
+        }
+
+        function handleDuplicateClick(e) {
+            if (!isDuplicating) return;
+            
+            e.stopPropagation();
+            
+            const targetDay = this.dataset.day;
+            const targetTime = this.dataset.time;
+            
+            timetable[targetDay][targetTime] = window.duplicateText;
+            updateCell(this, window.duplicateText);
+            saveToStorage();
+            
+            // Clean up
+            cancelDuplicate();
+        }
+
+        function cancelDuplicate() {
+            isDuplicating = false;
+            document.body.style.cursor = 'default';
+            
+            const instruction = document.getElementById('duplicate-instruction');
+            if (instruction) instruction.remove();
+            
+            const cells = document.querySelectorAll('.event-cell');
+            cells.forEach(cell => {
+                cell.removeEventListener('click', handleDuplicateClick);
+            });
+            
+            delete window.duplicateText;
         }
 
         function saveToStorage() {
@@ -323,7 +493,13 @@
 
         // Close modal with Escape key
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                if (isDuplicating) {
+                    cancelDuplicate();
+                } else {
+                    closeModal();
+                }
+            }
         });
 
         initTimetable();
