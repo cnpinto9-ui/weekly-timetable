@@ -96,13 +96,16 @@ for (let i = 0; i < totalHours; i++) {
   days.forEach(() => {
     const cell = document.createElement("div");
     cell.className = "cell";
+
     cell.addEventListener("dragover", e => {
       e.preventDefault();
       cell.classList.add("dragover");
     });
+
     cell.addEventListener("dragleave", () => {
       cell.classList.remove("dragover");
     });
+
     cell.addEventListener("drop", () => {
       cell.classList.remove("dragover");
       if (draggedBlock) {
@@ -137,11 +140,20 @@ function createBlock(text) {
   });
 
   // ✅ Middle-click duplication
-  block.addEventListener("auxclick", (e) => {
-    if (e.button === 1) { // Middle mouse button
-      const duplicate = createBlock(block.textContent);
+  block.addEventListener("mousedown", (e) => {
+    if (e.button === 1) { // middle mouse button
+      e.preventDefault(); // prevent scroll
+      const duplicate = document.createElement("div");
+      duplicate.className = "block";
+      duplicate.textContent = block.textContent;
+      duplicate.draggable = true;
+
+      // attach the same handlers to the duplicate
+      duplicate.addEventListener("dragstart", () => { draggedBlock = duplicate; });
+      duplicate.addEventListener("dragend", () => { draggedBlock = null; });
+      duplicate.addEventListener("mousedown", block.onmousedown);
+
       block.parentElement.appendChild(duplicate);
-      e.preventDefault(); // prevent scrolling
     }
   });
 
