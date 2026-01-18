@@ -2,122 +2,147 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Weekly Timetable Builder</title>
+<title>Weekly Timetable (Drag & Drop)</title>
+
 <style>
-  body { font-family: Arial, sans-serif; background:#f9fafb; padding:20px; }
-  h1 { margin-bottom:5px; }
-  .controls { margin-bottom:15px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-  input, select, button { padding:6px; font-size:14px; }
-  button { cursor:pointer; background:#2563eb; color:white; border:none; border-radius:4px; }
-  .timetable { display:grid; grid-template-columns:80px repeat(7,1fr); gap:5px; }
-  .day-header { text-align:center; font-weight:bold; padding:5px; }
-  .time { font-size:12px; text-align:right; padding-right:5px; color:#555; }
-  .cell { background:white; height:50px; border-radius:6px; position:relative; }
-  .cell.dragover { outline:2px dashed #2563eb; }
-  .block { position:absolute; width:100%; border-radius:6px; padding:5px; font-size:12px; cursor:grab; box-sizing:border-box; }
-  .block:active { cursor:grabbing; }
-  .block span { display:block; font-weight:bold; cursor:text; }
+  body {
+    font-family: Arial, sans-serif;
+    background: #f9fafb;
+    padding: 20px;
+  }
+
+  h1 {
+    margin-bottom: 10px;
+  }
+
+  .timetable {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    gap: 5px;
+  }
+
+  .time {
+    font-size: 12px;
+    text-align: right;
+    padding-right: 5px;
+    color: #555;
+  }
+
+  .day-header {
+    text-align: center;
+    font-weight: bold;
+    padding: 5px;
+  }
+
+  .cell {
+    background: white;
+    min-height: 50px;
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .block {
+    background: #dbeafe;
+    border-radius: 4px;
+    padding: 5px;
+    cursor: grab;
+    font-size: 12px;
+  }
+
+  .block:active {
+    cursor: grabbing;
+  }
+
+  .cell.dragover {
+    outline: 2px dashed #2563eb;
+  }
 </style>
 </head>
+
 <body>
 
-<h1>Weekly Timetable Builder</h1>
-<p>Create multiple blocks, drag them, same name = same colour</p>
-
-<div class="controls">
-  <input id="blockName" placeholder="Block name (e.g. Work)">
-  <select id="blockDuration">
-    <option value="1">1 hour</option>
-    <option value="2">2 hours</option>
-    <option value="8">8 hours</option>
-  </select>
-  <button onclick="createNewBlock()">Create Block</button>
-</div>
+<h1>Weekly Timetable (Drag & Drop)</h1>
+<p>Drag blocks between days and time slots</p>
 
 <div id="timetable" class="timetable"></div>
 
 <script>
 const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const startHour = 10;
-const totalHours = 12;
-const hourHeight = 50;
+const totalHours = 12; // 10:00 → 22:00
 
 const timetable = document.getElementById("timetable");
 let draggedBlock = null;
 
-// ---------- GRID ----------
+// Build header row
 timetable.appendChild(document.createElement("div"));
 days.forEach(day => {
-  const h = document.createElement("div");
-  h.className = "day-header";
-  h.textContent = day;
-  timetable.appendChild(h);
+  const header = document.createElement("div");
+  header.className = "day-header";
+  header.textContent = day;
+  timetable.appendChild(header);
 });
 
+// Build time rows
 for (let i = 0; i < totalHours; i++) {
-  const time = document.createElement("div");
-  time.className = "time";
-  time.textContent = formatHour(startHour + i);
-  timetable.appendChild(time);
+  const hour = startHour + i;
+  const timeLabel = document.createElement("div");
+  timeLabel.className = "time";
+  timeLabel.textContent = formatHour(hour);
+  timetable.appendChild(timeLabel);
 
   days.forEach(() => {
     const cell = document.createElement("div");
     cell.className = "cell";
-
-    cell.addEventListener("dragover", e => { e.preventDefault(); cell.classList.add("dragover"); });
-    cell.addEventListener("dragleave", () => cell.classList.remove("dragover"));
+    cell.addEventListener("dragover", e => {
+      e.preventDefault();
+      cell.classList.add("dragover");
+    });
+    cell.addEventListener("dragleave", () => {
+      cell.classList.remove("dragover");
+    });
     cell.addEventListener("drop", () => {
       cell.classList.remove("dragover");
-      if (draggedBlock) { cell.appendChild(draggedBlock); draggedBlock.style.top="0px"; }
+      if (draggedBlock) {
+        cell.innerHTML = "";
+        cell.appendChild(draggedBlock);
+      }
     });
+
+    // Add a sample block at Monday 10am
+    if (i === 0 && timetable.children.length === 9) {
+      cell.appendChild(createBlock("Work"));
+    }
 
     timetable.appendChild(cell);
   });
 }
 
-// ---------- BLOCK CREATION ----------
-function createNewBlock() {
-  const nameInput = document.getElementById("blockName");
-  const name = nameInput.value.trim();
-  const duration = parseInt(document.getElementById("blockDuration").value);
-
-  if (!name) return alert("Enter a block name");
-
+function createBlock(text) {
   const block = document.createElement("div");
   block.className = "block";
-  block.style.height = (duration*hourHeight)+"px";
-  block.style.background = colorFromName(name);
+  block.textContent = text;
   block.draggable = true;
 
-  const label = document.createElement("span");
-  label.textContent = name;
-  label.contentEditable = true;
-  label.addEventListener("input", () => block.style.background = colorFromName(label.textContent.trim()));
+  block.addEventListener("dragstart", () => {
+    draggedBlock = block;
+  });
 
-  block.appendChild(label);
-  block.addEventListener("dragstart", () => draggedBlock=block);
-  block.addEventListener("dragend", () => draggedBlock=null);
+  block.addEventListener("dragend", () => {
+    draggedBlock = null;
+  });
 
-  document.querySelector(".cell").appendChild(block);
-  nameInput.value = "";
+  return block;
 }
 
-// ---------- UTILITIES ----------
 function formatHour(hour) {
-  const h = hour%24;
-  const suffix = h>=12?"PM":"AM";
-  const display = h>12?h-12:h;
-  return display+":00 "+suffix;
-}
-
-function colorFromName(name) {
-  let hash=0;
-  for (let i=0;i<name.length;i++){ hash=name.charCodeAt(i)+((hash<<5)-hash); }
-  const hue = Math.abs(hash)%360;
-  return `hsl(${hue},75%,85%)`;
+  const h = hour % 24;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const display = h > 12 ? h - 12 : h;
+  return `${display}:00 ${suffix}`;
 }
 </script>
 
 </body>
 </html>
-
