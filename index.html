@@ -24,6 +24,7 @@ h1 {
 
 input, select, button {
   padding: 6px;
+  font-size: 14px;
 }
 
 .timetable {
@@ -70,7 +71,7 @@ input, select, button {
 <h1>Weekly Timetable</h1>
 
 <div class="controls">
-  <input id="blockName" placeholder="Block name">
+  <input id="blockName" placeholder="Block name (e.g. Work)">
   <select id="blockDuration">
     <option value="1">1 hour</option>
     <option value="2">2 hours</option>
@@ -79,23 +80,29 @@ input, select, button {
     <option value="5">5 hours</option>
     <option value="8">8 hours</option>
   </select>
-  <button onclick="createBlock()">Create Block</button>
+  <button id="createBtn">Create Block</button>
 </div>
 
 <div id="timetable" class="timetable"></div>
 
 <script>
+/* ---------- CONFIG ---------- */
 const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 const startHour = 10;
-const endHour = 24;               // MIDNIGHT
-const hours = endHour - startHour; // 14 HOURS
+const endHour = 24;                 // midnight
+const totalHours = endHour - startHour;
 const hourHeight = 50;
 
+/* ---------- STATE ---------- */
 const timetable = document.getElementById("timetable");
-const colors = {};
-let dragged = null;
+const blockNameInput = document.getElementById("blockName");
+const blockDurationSelect = document.getElementById("blockDuration");
+const createBtn = document.getElementById("createBtn");
 
-/* -------- Helpers -------- */
+const colors = {};
+let draggedBlock = null;
+
+/* ---------- HELPERS ---------- */
 function formatHour(h) {
   if (h === 24) return "12:00 AM";
   const suffix = h >= 12 ? "PM" : "AM";
@@ -103,24 +110,24 @@ function formatHour(h) {
   return `${hour}:00 ${suffix}`;
 }
 
-function colorFor(name) {
+function getColor(name) {
   if (!colors[name]) {
-    colors[name] = `hsl(${Math.random()*360},70%,50%)`;
+    colors[name] = `hsl(${Math.random() * 360}, 70%, 50%)`;
   }
   return colors[name];
 }
 
-/* -------- Grid -------- */
-timetable.appendChild(document.createElement("div"));
+/* ---------- BUILD GRID ---------- */
+timetable.appendChild(document.createElement("div")); // empty corner
 
-days.forEach(d => {
+days.forEach(day => {
   const h = document.createElement("div");
   h.className = "header";
-  h.textContent = d;
+  h.textContent = day;
   timetable.appendChild(h);
 });
 
-for (let i = 0; i < hours; i++) {
+for (let i = 0; i < totalHours; i++) {
   const time = document.createElement("div");
   time.className = "time";
   time.textContent = formatHour(startHour + i);
@@ -132,9 +139,9 @@ for (let i = 0; i < hours; i++) {
 
     cell.addEventListener("dragover", e => e.preventDefault());
     cell.addEventListener("drop", () => {
-      if (dragged) {
-        cell.appendChild(dragged);
-        dragged.style.top = "0";
+      if (draggedBlock) {
+        cell.appendChild(draggedBlock);
+        draggedBlock.style.top = "0";
       }
     });
 
@@ -142,57 +149,59 @@ for (let i = 0; i < hours; i++) {
   });
 }
 
-/* -------- Blocks -------- */
-function createBlock(nameOverride, durOverride, colOverride) {
-  const name = nameOverride || blockName.value.trim();
-  const dur = durOverride || Number(blockDuration.value);
-  if (!name) return alert("Enter block name");
+/* ---------- BLOCK CREATION ---------- */
+createBtn.onclick = () => {
+  const name = blockNameInput.value.trim();
+  const duration = Number(blockDurationSelect.value);
 
+  if (!name) {
+    alert("Enter a block name");
+    return;
+  }
+
+  createBlock(name, duration, getColor(name));
+};
+
+function createBlock(name, duration, color) {
   const block = document.createElement("div");
   block.className = "block";
   block.draggable = true;
 
-  const color = colOverride || colorFor(name);
   block.style.background = color;
-  block.style.height = `${dur * hourHeight}px`;
+  block.style.height = `${duration * hourHeight}px`;
 
   block.dataset.name = name;
-  block.dataset.dur = dur;
+  block.dataset.duration = duration;
   block.dataset.color = color;
 
-  updateText(block);
+  updateBlockText(block);
 
-  block.addEventListener("dragstart", () => dragged = block);
+  block.addEventListener("dragstart", () => draggedBlock = block);
 
   block.ondblclick = () => {
-    const n = prompt("Edit block name", block.dataset.name);
-    if (n) {
-      block.dataset.name = n;
-      block.style.background = colorFor(n);
-      updateText(block);
+    const newName = prompt("Edit block name:", block.dataset.name);
+    if (newName) {
+      block.dataset.name = newName;
+      block.dataset.color = getColor(newName);
+      block.style.background = block.dataset.color;
+      updateBlockText(block);
     }
   };
 
   document.querySelector(".cell").appendChild(block);
 }
 
-function updateText(block) {
-  const dur = Number(block.dataset.dur);
+/* ---------- BLOCK TEXT ---------- */
+function updateBlockText(block) {
+  const duration = Number(block.dataset.duration);
   block.innerHTML = "";
 
-  for (let i = 0; i < dur; i++) {
+  for (let i = 0; i < duration; i++) {
     block.innerHTML += `${formatHour(startHour + i)} ${block.dataset.name}<br>`;
   }
 
-  const btn = document.createElement("button");
-  btn.textContent = "Duplicate";
-  btn.onclick = e => {
+  const dup = document.createElement("button");
+  dup.textContent = "Duplicate";
+  dup.onclick = e => {
     e.stopPropagation();
-    createBlock(block.dataset.name, dur, block.dataset.color);
-  };
-  block.appendChild(btn);
-}
-</script>
-
-</body>
-</html>
+    createBlock(
