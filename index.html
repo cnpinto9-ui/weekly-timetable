@@ -465,22 +465,19 @@
             delete window.duplicateText;
         }
 
-        async function saveToStorage() {
+        function saveToStorage() {
             try {
                 const data = JSON.stringify(timetable);
                 // Try Claude's storage first, fallback to localStorage
                 if (window.storage) {
-                    await window.storage.set('weekly-timetable', data);
+                    window.storage.set('weekly-timetable', data).catch(() => {
+                        localStorage.setItem('weekly-timetable', data);
+                    });
                 } else {
                     localStorage.setItem('weekly-timetable', data);
                 }
             } catch (error) {
-                // Fallback to localStorage if Claude storage fails
-                try {
-                    localStorage.setItem('weekly-timetable', data);
-                } catch (e) {
-                    console.error('Error saving timetable:', e);
-                }
+                console.error('Error saving timetable:', error);
             }
         }
 
@@ -488,17 +485,15 @@
             try {
                 let data = null;
                 
-                // Try Claude's storage first
-                if (window.storage) {
+                // Try localStorage first for GitHub Pages
+                const stored = localStorage.getItem('weekly-timetable');
+                if (stored) {
+                    data = JSON.parse(stored);
+                } else if (window.storage) {
+                    // Try Claude's storage if localStorage is empty
                     const result = await window.storage.get('weekly-timetable');
                     if (result && result.value) {
                         data = JSON.parse(result.value);
-                    }
-                } else {
-                    // Fallback to localStorage
-                    const stored = localStorage.getItem('weekly-timetable');
-                    if (stored) {
-                        data = JSON.parse(stored);
                     }
                 }
                 
