@@ -465,24 +465,33 @@
             delete window.duplicateText;
         }
 
-        function saveToStorage() {
-            const data = JSON.stringify(timetable);
-            // Store in memory for this session
-            window.timetableData = data;
+        async function saveToStorage() {
+            try {
+                const data = JSON.stringify(timetable);
+                await window.storage.set('weekly-timetable', data);
+            } catch (error) {
+                console.error('Error saving timetable:', error);
+            }
         }
 
-        function loadFromStorage() {
-            if (window.timetableData) {
-                const data = JSON.parse(window.timetableData);
-                Object.keys(data).forEach(day => {
-                    Object.keys(data[day]).forEach(time => {
-                        const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
-                        if (cell && data[day][time]) {
-                            timetable[day][time] = data[day][time];
-                            updateCell(cell, data[day][time]);
-                        }
+        async function loadFromStorage() {
+            try {
+                const result = await window.storage.get('weekly-timetable');
+                if (result && result.value) {
+                    const data = JSON.parse(result.value);
+                    Object.keys(data).forEach(day => {
+                        Object.keys(data[day]).forEach(time => {
+                            const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
+                            if (cell && data[day][time]) {
+                                timetable[day][time] = data[day][time];
+                                updateCell(cell, data[day][time]);
+                            }
+                        });
                     });
-                });
+                }
+            } catch (error) {
+                // Key doesn't exist yet or other error - that's okay for first load
+                console.log('No saved timetable found, starting fresh');
             }
         }
 
