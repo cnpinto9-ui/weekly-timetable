@@ -103,4 +103,197 @@ button {
 }
 
 .resize-handle {
-  pos
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: rgba(0,0,0,0.15);
+}
+</style>
+</head>
+
+<body>
+
+<h1>Weekly Timetable Builder</h1>
+<p>Drag, resize, duplicate. Auto-saved.</p>
+
+<div class="controls">
+  <input id="blockName" placeholder="Block name (e.g. Work)">
+  <select id="blockDuration">
+    <option value="1">1 hour</option>
+    <option value="2">2 hours</option>
+    <option value="8">8 hours</option>
+  </select>
+  <button onclick="createBlock()">Create Block</button>
+</div>
+
+<div id="timetable" class="timetable"></div>
+
+<script>
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const startHour = 10;
+const totalHours = 12;
+const hourHeight = 50;
+
+const timetable = document.getElementById("timetable");
+let draggedBlock = null;
+let resizingBlock = null;
+
+// ---------- GRID ----------
+timetable.appendChild(document.createElement("div"));
+days.forEach(d => {
+  const h = document.createElement("div");
+  h.className = "day-header";
+  h.textContent = d;
+  timetable.appendChild(h);
+});
+
+for (let i = 0; i < totalHours; i++) {
+  const t = document.createElement("div");
+  t.className = "time";
+  t.textContent = formatHour(startHour + i);
+  timetable.appendChild(t);
+
+  days.forEach(() => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+
+    cell.addEventListener("dragover", e => {
+      e.preventDefault();
+      cell.classList.add("dragover");
+    });
+
+    cell.addEventListener("dragleave", () => {
+      cell.classList.remove("dragover");
+    });
+
+    cell.addEventListener("drop", () => {
+      cell.classList.remove("dragover");
+      if (draggedBlock) {
+        cell.appendChild(draggedBlock);
+        draggedBlock.style.top = "0px";
+        save();
+      }
+    });
+
+    timetable.appendChild(cell);
+  });
+}
+
+// ---------- BLOCK ----------
+function createBlock(nameOverride, durationOverride) {
+  const name = nameOverride || document.getElementById("blockName").value.trim();
+  const duration = durationOverride || parseInt(document.getElementById("blockDuration").value);
+
+  if (!name) return alert("Enter block name");
+
+  const block = document.createElement("div");
+  block.className = "block";
+  block.style.height = duration * hourHeight + "px";
+  block.style.background = colorFromName(name);
+  block.draggable = true;
+
+  const header = document.createElement("div");
+  header.className = "block-header";
+
+  const title = document.createElement("span");
+  title.textContent = name;
+  title.contentEditable = true;
+
+  title.addEventListener("input", () => {
+    block.style.background = colorFromName(title.textContent);
+    updateContent(block);
+    save();
+  });
+
+  const controls = document.createElement("div");
+  controls.className = "block-controls";
+
+  const dup = document.createElement("button");
+  dup.textContent = "⧉";
+  dup.onclick = () => {
+    createBlock(title.textContent, block.dataset.hours);
+  };
+
+  controls.appendChild(dup);
+  header.appendChild(title);
+  header.appendChild(controls);
+
+  const content = document.createElement("div");
+  content.className = "block-content";
+
+  const resize = document.createElement("div");
+  resize.className = "resize-handle";
+
+  resize.addEventListener("mousedown", e => {
+    resizingBlock = block;
+    e.preventDefault();
+  });
+
+  block.append(header, content, resize);
+  block.dataset.hours = duration;
+
+  block.addEventListener("dragstart", () => draggedBlock = block);
+  block.addEventListener("dragend", () => draggedBlock = null);
+
+  document.querySelector(".cell").appendChild(block);
+  updateContent(block);
+  save();
+}
+
+// ---------- RESIZE ----------
+document.addEventListener("mousemove", e => {
+  if (!resizingBlock) return;
+  const h = Math.round(e.movementY / hourHeight);
+  let hours = Math.max(1, Math.min(8, parseInt(resizingBlock.dataset.hours) + h));
+  if (![1,2,8].includes(hours)) hours = hours < 2 ? 1 : hours < 8 ? 2 : 8;
+  resizingBlock.dataset.hours = hours;
+  resizingBlock.style.height = hours * hourHeight + "px";
+  updateContent(resizingBlock);
+});
+
+document.addEventListener("mouseup", () => {
+  if (resizingBlock) save();
+  resizingBlock = null;
+});
+
+// ---------- CONTENT ----------
+function updateContent(block) {
+  const name = block.querySelector("span").textContent;
+  const hours = parseInt(block.dataset.hours);
+  const cell = block.parentElement;
+  const index = [...timetable.children].indexOf(cell);
+  const hourIndex = Math.floor((index - 8) / 7);
+  let text = "";
+  for (let i = 0; i < hours; i++) {
+    text += `${formatHour(startHour + hourIndex + i)} – ${name}<br>`;
+  }
+  block.querySelector(".block-content").innerHTML = text;
+}
+
+// ---------- SAVE / LOAD ----------
+function save() {
+  localStorage.setItem("timetable", timetable.innerHTML);
+}
+
+const saved = localStorage.getItem("timetable");
+if (saved) timetable.innerHTML = saved;
+
+// ---------- UTIL ----------
+function formatHour(h) {
+  const suffix = h >= 12 ? "PM" : "AM";
+  const display = h > 12 ? h - 12 : h;
+  return `${display}:00 ${suffix}`;
+}
+
+function colorFromName(name) {
+  let hash = 0;
+  for (let c of name) hash = c.charCodeAt(0) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360}, 75%, 85%)`;
+}
+</script>
+
+</body>
+</html>
