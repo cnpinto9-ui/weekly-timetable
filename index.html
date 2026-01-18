@@ -36,5 +36,163 @@ input, select, button {
   background: #eee;
   text-align: center;
   font-weight: bold;
-  paddin
+  padding: 8px;
+  border: 1px solid #ccc;
+}
 
+.cell {
+  background: #fff;
+  height: 50px;
+  position: relative;
+  border: 1px solid #ddd;
+}
+
+.block {
+  position: absolute;
+  width: 100%;
+  color: white;
+  padding: 4px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: grab;
+  overflow-y: auto;
+}
+
+.block button {
+  font-size: 10px;
+  margin-top: 4px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Weekly Timetable</h1>
+
+<div class="controls">
+  <input id="blockName" placeholder="Block name">
+  <select id="blockDuration">
+    <option value="1">1 hour</option>
+    <option value="2">2 hours</option>
+    <option value="3">3 hours</option>
+    <option value="4">4 hours</option>
+    <option value="5">5 hours</option>
+    <option value="8">8 hours</option>
+  </select>
+  <button onclick="createBlock()">Create Block</button>
+</div>
+
+<div id="timetable" class="timetable"></div>
+
+<script>
+const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const startHour = 10;
+const endHour = 24;               // MIDNIGHT
+const hours = endHour - startHour; // 14 HOURS
+const hourHeight = 50;
+
+const timetable = document.getElementById("timetable");
+const colors = {};
+let dragged = null;
+
+/* -------- Helpers -------- */
+function formatHour(h) {
+  if (h === 24) return "12:00 AM";
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:00 ${suffix}`;
+}
+
+function colorFor(name) {
+  if (!colors[name]) {
+    colors[name] = `hsl(${Math.random()*360},70%,50%)`;
+  }
+  return colors[name];
+}
+
+/* -------- Grid -------- */
+timetable.appendChild(document.createElement("div"));
+
+days.forEach(d => {
+  const h = document.createElement("div");
+  h.className = "header";
+  h.textContent = d;
+  timetable.appendChild(h);
+});
+
+for (let i = 0; i < hours; i++) {
+  const time = document.createElement("div");
+  time.className = "time";
+  time.textContent = formatHour(startHour + i);
+  timetable.appendChild(time);
+
+  days.forEach(() => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+
+    cell.addEventListener("dragover", e => e.preventDefault());
+    cell.addEventListener("drop", () => {
+      if (dragged) {
+        cell.appendChild(dragged);
+        dragged.style.top = "0";
+      }
+    });
+
+    timetable.appendChild(cell);
+  });
+}
+
+/* -------- Blocks -------- */
+function createBlock(nameOverride, durOverride, colOverride) {
+  const name = nameOverride || blockName.value.trim();
+  const dur = durOverride || Number(blockDuration.value);
+  if (!name) return alert("Enter block name");
+
+  const block = document.createElement("div");
+  block.className = "block";
+  block.draggable = true;
+
+  const color = colOverride || colorFor(name);
+  block.style.background = color;
+  block.style.height = `${dur * hourHeight}px`;
+
+  block.dataset.name = name;
+  block.dataset.dur = dur;
+  block.dataset.color = color;
+
+  updateText(block);
+
+  block.addEventListener("dragstart", () => dragged = block);
+
+  block.ondblclick = () => {
+    const n = prompt("Edit block name", block.dataset.name);
+    if (n) {
+      block.dataset.name = n;
+      block.style.background = colorFor(n);
+      updateText(block);
+    }
+  };
+
+  document.querySelector(".cell").appendChild(block);
+}
+
+function updateText(block) {
+  const dur = Number(block.dataset.dur);
+  block.innerHTML = "";
+
+  for (let i = 0; i < dur; i++) {
+    block.innerHTML += `${formatHour(startHour + i)} ${block.dataset.name}<br>`;
+  }
+
+  const btn = document.createElement("button");
+  btn.textContent = "Duplicate";
+  btn.onclick = e => {
+    e.stopPropagation();
+    createBlock(block.dataset.name, dur, block.dataset.color);
+  };
+  block.appendChild(btn);
+}
+</script>
+
+</body>
+</html>
