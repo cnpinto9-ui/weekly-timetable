@@ -186,3 +186,34 @@ function createBlock(nameOverride, durationOverride, colorOverride) {
       block.dataset.name,
       parseInt(block.dataset.duration),
       block.dataset.color
+    );
+  };
+
+  block.appendChild(dupBtn);
+
+  document.querySelector(".cell").appendChild(block);
+}
+
+/* ---------- Block Text ---------- */
+function updateBlockText(block) {
+  const hours = parseInt(block.dataset.duration);
+  let text = "";
+
+  for (let i = 0; i < hours; i++) {
+    const hour = formatHour(startHour + i);
+    text += `${hour} ${block.dataset.name}<br>`;
+  }
+
+  block.innerHTML = text;
+  const btn = document.createElement("button");
+  btn.textContent = "Duplicate";
+  btn.onclick = e => {
+    e.stopPropagation();
+    createBlock(block.dataset.name, hours, block.dataset.color);
+  };
+  block.appendChild(btn);
+}
+</script>
+
+</body>
+</html>
