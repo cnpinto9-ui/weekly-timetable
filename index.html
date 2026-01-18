@@ -112,37 +112,4 @@ for (let i = 0; i < totalHours; i++) {
 
     // Add a sample block at Monday 10am
     if (i === 0 && timetable.children.length === 9) {
-      cell.appendChild(createBlock("Work"));
-    }
-
-    timetable.appendChild(cell);
-  });
-}
-
-function createBlock(text) {
-  const block = document.createElement("div");
-  block.className = "block";
-  block.textContent = text;
-  block.draggable = true;
-
-  block.addEventListener("dragstart", () => {
-    draggedBlock = block;
-  });
-
-  block.addEventListener("dragend", () => {
-    draggedBlock = null;
-  });
-
-  return block;
-}
-
-function formatHour(hour) {
-  const h = hour % 24;
-  const suffix = h >= 12 ? "PM" : "AM";
-  const display = h > 12 ? h - 12 : h;
-  return `${display}:00 ${suffix}`;
-}
-</script>
-
-</body>
-</html>
+      cell.app
