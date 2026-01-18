@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Weekly Timetable (Drag & Drop + Duplicate)</title>
+<title>Weekly Timetable (Drag & Drop)</title>
 
 <style>
   body {
@@ -48,8 +48,6 @@
     padding: 5px;
     cursor: grab;
     font-size: 12px;
-    margin-bottom: 2px;
-    user-select: none;
   }
 
   .block:active {
@@ -64,8 +62,8 @@
 
 <body>
 
-<h1>Weekly Timetable (Drag & Drop + Duplicate)</h1>
-<p>Left-click a block to duplicate it, drag blocks between days and time slots</p>
+<h1>Weekly Timetable (Drag & Drop)</h1>
+<p>Drag blocks between days and time slots</p>
 
 <div id="timetable" class="timetable"></div>
 
@@ -74,4 +72,37 @@ const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sun
 const startHour = 10;
 const totalHours = 12; // 10:00 → 22:00
 
-cons
+const timetable = document.getElementById("timetable");
+let draggedBlock = null;
+
+// Build header row
+timetable.appendChild(document.createElement("div"));
+days.forEach(day => {
+  const header = document.createElement("div");
+  header.className = "day-header";
+  header.textContent = day;
+  timetable.appendChild(header);
+});
+
+// Build time rows
+for (let i = 0; i < totalHours; i++) {
+  const hour = startHour + i;
+  const timeLabel = document.createElement("div");
+  timeLabel.className = "time";
+  timeLabel.textContent = formatHour(hour);
+  timetable.appendChild(timeLabel);
+
+  days.forEach(() => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.addEventListener("dragover", e => {
+      e.preventDefault();
+      cell.classList.add("dragover");
+    });
+    cell.addEventListener("dragleave", () => {
+      cell.classList.remove("dragover");
+    });
+    cell.addEventListener("drop", () => {
+      cell.classList.remove("dragover");
+      if (draggedBlock) {
+        cell.innerHTML =
