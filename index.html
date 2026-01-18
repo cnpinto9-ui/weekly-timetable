@@ -48,7 +48,6 @@
     padding: 5px;
     cursor: grab;
     font-size: 12px;
-    margin-bottom: 2px;
   }
 
   .block:active {
@@ -71,37 +70,13 @@
 <script>
 const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const startHour = 10;
-const endHour = 24; // 12 AM midnight
+const totalHours = 12; // 10:00 → 22:00
+
 const timetable = document.getElementById("timetable");
 let draggedBlock = null;
 
 // Build header row
-timetable.appendChild(document.createElement("div")); // top-left empty
+timetable.appendChild(document.createElement("div"));
 days.forEach(day => {
   const header = document.createElement("div");
-  header.className = "day-header";
-  header.textContent = day;
-  timetable.appendChild(header);
-});
-
-// Build rows properly: each row = 1 time cell + 7 day cells
-for (let hour = startHour; hour < endHour; hour++) {
-  // Time label
-  const timeLabel = document.createElement("div");
-  timeLabel.className = "time";
-  timeLabel.textContent = formatHour(hour);
-  timetable.appendChild(timeLabel);
-
-  // Day cells
-  days.forEach((day, dayIndex) => {
-    const cell = document.createElement("div");
-    cell.className = "cell";
-
-    cell.addEventListener("dragover", e => {
-      e.preventDefault();
-      cell.classList.add("dragover");
-    });
-
-    cell.addEventListener("dragleave", () => {
-      cell.classList.remove("dragover");
-    });
+  head
