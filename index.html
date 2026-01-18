@@ -229,6 +229,27 @@
         const timetable = {};
         let currentCell = null;
         let draggedCell = null;
+        const eventColors = {};
+        const availableColors = [
+            '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+            '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b',
+            '#27ae60', '#2980b9', '#8e44ad', '#d35400', '#2c3e50',
+            '#f1c40f', '#e84393', '#00b894', '#0984e3', '#6c5ce7',
+            '#fdcb6e', '#ff7675', '#74b9ff', '#a29bfe', '#fd79a8'
+        ];
+        let colorIndex = 0;
+
+        function getColorForEvent(eventText) {
+            const key = eventText.toLowerCase().trim();
+            if (!key) return '#3498db';
+            
+            if (!eventColors[key]) {
+                eventColors[key] = availableColors[colorIndex % availableColors.length];
+                colorIndex++;
+            }
+            
+            return eventColors[key];
+        }
 
         function initTimetable() {
             const container = document.getElementById('timetable');
@@ -421,15 +442,22 @@
             if (text) {
                 cell.classList.add('has-event');
                 cell.setAttribute('draggable', 'true');
+                const color = getColorForEvent(text);
+                cell.style.backgroundColor = color;
             } else {
                 cell.classList.remove('has-event');
                 cell.removeAttribute('draggable');
+                cell.style.backgroundColor = '';
             }
         }
 
         function saveToStorage() {
             try {
-                const data = JSON.stringify(timetable);
+                const data = JSON.stringify({
+                    timetable: timetable,
+                    eventColors: eventColors,
+                    colorIndex: colorIndex
+                });
                 // Try Claude's storage first, fallback to localStorage
                 if (window.storage) {
                     window.storage.set('weekly-timetable', data).catch(() => {
@@ -460,12 +488,23 @@
                 }
                 
                 if (data) {
-                    Object.keys(data).forEach(day => {
-                        Object.keys(data[day]).forEach(time => {
+                    // Load timetable data
+                    const timetableData = data.timetable || data;
+                    
+                    // Load colors if available
+                    if (data.eventColors) {
+                        Object.assign(eventColors, data.eventColors);
+                    }
+                    if (data.colorIndex !== undefined) {
+                        colorIndex = data.colorIndex;
+                    }
+                    
+                    Object.keys(timetableData).forEach(day => {
+                        Object.keys(timetableData[day]).forEach(time => {
                             const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
-                            if (cell && data[day][time]) {
-                                timetable[day][time] = data[day][time];
-                                updateCell(cell, data[day][time]);
+                            if (cell && timetableData[day][time]) {
+                                timetable[day][time] = timetableData[day][time];
+                                updateCell(cell, timetableData[day][time]);
                             }
                         });
                     });
