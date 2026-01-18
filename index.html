@@ -468,17 +468,41 @@
         async function saveToStorage() {
             try {
                 const data = JSON.stringify(timetable);
-                await window.storage.set('weekly-timetable', data);
+                // Try Claude's storage first, fallback to localStorage
+                if (window.storage) {
+                    await window.storage.set('weekly-timetable', data);
+                } else {
+                    localStorage.setItem('weekly-timetable', data);
+                }
             } catch (error) {
-                console.error('Error saving timetable:', error);
+                // Fallback to localStorage if Claude storage fails
+                try {
+                    localStorage.setItem('weekly-timetable', data);
+                } catch (e) {
+                    console.error('Error saving timetable:', e);
+                }
             }
         }
 
         async function loadFromStorage() {
             try {
-                const result = await window.storage.get('weekly-timetable');
-                if (result && result.value) {
-                    const data = JSON.parse(result.value);
+                let data = null;
+                
+                // Try Claude's storage first
+                if (window.storage) {
+                    const result = await window.storage.get('weekly-timetable');
+                    if (result && result.value) {
+                        data = JSON.parse(result.value);
+                    }
+                } else {
+                    // Fallback to localStorage
+                    const stored = localStorage.getItem('weekly-timetable');
+                    if (stored) {
+                        data = JSON.parse(stored);
+                    }
+                }
+                
+                if (data) {
                     Object.keys(data).forEach(day => {
                         Object.keys(data[day]).forEach(time => {
                             const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
@@ -490,7 +514,6 @@
                     });
                 }
             } catch (error) {
-                // Key doesn't exist yet or other error - that's okay for first load
                 console.log('No saved timetable found, starting fresh');
             }
         }
