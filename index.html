@@ -18,10 +18,12 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   input, select, button {
     padding: 6px;
+    font-size: 14px;
   }
 
   button {
@@ -69,7 +71,6 @@
     padding: 5px;
     font-size: 12px;
     cursor: grab;
-    color: #111;
     box-sizing: border-box;
   }
 
@@ -86,15 +87,14 @@
 <body>
 
 <h1>Weekly Timetable Builder</h1>
-<p>Drag blocks, resize duration, click name to edit</p>
+<p>Create multiple blocks, drag them, same name = same colour</p>
 
 <div class="controls">
-  <input id="blockName" placeholder="Block name (e.g. Gym)">
+  <input id="blockName" placeholder="Block name (e.g. Work)">
   <select id="blockDuration">
     <option value="1">1 hour</option>
     <option value="2">2 hours</option>
-    <option value="3">3 hours</option>
-    <option value="4">4 hours</option>
+    <option value="8">8 hours</option>
   </select>
   <button onclick="createNewBlock()">Create Block</button>
 </div>
@@ -110,12 +110,12 @@ const hourHeight = 50;
 const timetable = document.getElementById("timetable");
 let draggedBlock = null;
 
-// ---------- BUILD GRID ----------
+// ---------- GRID ----------
 timetable.appendChild(document.createElement("div"));
-days.forEach(d => {
+days.forEach(day => {
   const h = document.createElement("div");
   h.className = "day-header";
-  h.textContent = d;
+  h.textContent = day;
   timetable.appendChild(h);
 });
 
@@ -152,14 +152,15 @@ for (let i = 0; i < totalHours; i++) {
 
 // ---------- BLOCK CREATION ----------
 function createNewBlock() {
-  const name = document.getElementById("blockName").value.trim();
+  const nameInput = document.getElementById("blockName");
+  const name = nameInput.value.trim();
   const duration = parseInt(document.getElementById("blockDuration").value);
 
   if (!name) return alert("Enter a block name");
 
   const block = document.createElement("div");
   block.className = "block";
-  block.style.height = duration * hourHeight + "px";
+  block.style.height = (duration * hourHeight) + "px";
   block.style.background = colorFromName(name);
   block.draggable = true;
 
@@ -168,7 +169,7 @@ function createNewBlock() {
   label.contentEditable = true;
 
   label.addEventListener("input", () => {
-    block.style.background = colorFromName(label.textContent);
+    block.style.background = colorFromName(label.textContent.trim());
   });
 
   block.appendChild(label);
@@ -176,7 +177,9 @@ function createNewBlock() {
   block.addEventListener("dragstart", () => draggedBlock = block);
   block.addEventListener("dragend", () => draggedBlock = null);
 
+  // Place new blocks in the first available cell
   document.querySelector(".cell").appendChild(block);
+  nameInput.value = "";
 }
 
 // ---------- UTILITIES ----------
@@ -192,11 +195,12 @@ function colorFromName(name) {
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const hue = hash % 360;
-  return `hsl(${hue}, 80%, 85%)`;
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 75%, 85%)`;
 }
 </script>
 
 </body>
 </html>
+
 
