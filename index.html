@@ -1,152 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Weekly Timetable Builder</title>
+<meta charset="UTF-8" />
+<title>Weekly Timetable</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f9fafb;
-  padding: 20px;
-}
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+  }
 
-h1 { margin-bottom: 5px; }
+  h1 {
+    text-align: center;
+  }
 
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-}
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
 
-input, select, button {
-  padding: 6px;
-  font-size: 14px;
-}
+  input, select, button {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
 
-button {
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+  .timetable {
+    display: grid;
+    grid-template-columns: 100px repeat(7, 1fr);
+    gap: 1px;
+    background: #ccc;
+  }
 
-.timetable {
-  display: grid;
-  grid-template-columns: 80px repeat(7, 1fr);
-  gap: 5px;
-}
+  .header, .time {
+    background: #eee;
+    text-align: center;
+    font-weight: bold;
+    padding: 8px;
+  }
 
-.day-header {
-  text-align: center;
-  font-weight: bold;
-}
+  .cell {
+    background: #fff;
+    height: 50px;
+    position: relative;
+    border: 1px solid #ddd;
+  }
 
-.time {
-  font-size: 12px;
-  text-align: right;
-  padding-right: 5px;
-  color: #555;
-}
+  .block {
+    position: absolute;
+    inset: 0;
+    color: #fff;
+    font-size: 12px;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    overflow-y: auto;
+  }
 
-.cell {
-  background: white;
-  height: 50px;
-  position: relative;
-  border-radius: 6px;
-}
-
-.cell.dragover {
-  outline: 2px dashed #2563eb;
-}
-
-.block {
-  position: absolute;
-  width: 100%;
-  border-radius: 6px;
-  font-size: 12px;
-  box-sizing: border-box;
-  cursor: grab;
-  overflow: hidden;
-}
-
-.block-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-}
-
-.block-header span {
-  outline: none;
-}
-
-.block-controls {
-  display: flex;
-  gap: 4px;
-}
-
-.block-controls button {
-  background: rgba(0,0,0,0.15);
-  color: black;
-  border: none;
-  border-radius: 3px;
-  padding: 0 4px;
-  cursor: pointer;
-}
-
-.block-content {
-  margin-top: 4px;
-  font-size: 11px;
-}
-
-.resize-handle {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 6px;
-  cursor: ns-resize;
-  background: rgba(0,0,0,0.15);
-}
+  .block button {
+    font-size: 10px;
+    margin-top: 4px;
+    padding: 2px 4px;
+    cursor: pointer;
+  }
 </style>
 </head>
 
 <body>
 
-<h1>Weekly Timetable Builder</h1>
-<p>Drag, resize, duplicate. Auto-saved.</p>
+<h1>Weekly Timetable</h1>
 
 <div class="controls">
-  <input id="blockName" placeholder="Block name (e.g. Work)">
+  <input id="blockName" placeholder="Block name (e.g. Work)" />
   <select id="blockDuration">
     <option value="1">1 hour</option>
     <option value="2">2 hours</option>
+    <option value="3">3 hours</option>
+    <option value="4">4 hours</option>
+    <option value="5">5 hours</option>
     <option value="8">8 hours</option>
   </select>
   <button onclick="createBlock()">Create Block</button>
 </div>
 
-<div id="timetable" class="timetable"></div>
+<div class="timetable" id="timetable"></div>
 
 <script>
-const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const startHour = 10;
-const totalHours = 12;
+const endHour = 24;
+const totalHours = endHour - startHour;
 const hourHeight = 50;
 
 const timetable = document.getElementById("timetable");
+const colors = {};
 let draggedBlock = null;
-let resizingBlock = null;
 
-// ---------- GRID ----------
+/* ---------- Helpers ---------- */
+function formatHour(hour) {
+  if (hour === 24) return "12:00 AM";
+  const h = hour % 24;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${display}:00 ${suffix}`;
+}
+
+function getColor(name) {
+  if (!colors[name]) {
+    colors[name] = `hsl(${Math.random() * 360}, 70%, 50%)`;
+  }
+  return colors[name];
+}
+
+/* ---------- Build Grid ---------- */
 timetable.appendChild(document.createElement("div"));
-days.forEach(d => {
+
+days.forEach(day => {
   const h = document.createElement("div");
-  h.className = "day-header";
-  h.textContent = d;
+  h.className = "header";
+  h.textContent = day;
   timetable.appendChild(h);
 });
 
@@ -160,21 +134,11 @@ for (let i = 0; i < totalHours; i++) {
     const cell = document.createElement("div");
     cell.className = "cell";
 
-    cell.addEventListener("dragover", e => {
-      e.preventDefault();
-      cell.classList.add("dragover");
-    });
-
-    cell.addEventListener("dragleave", () => {
-      cell.classList.remove("dragover");
-    });
-
+    cell.addEventListener("dragover", e => e.preventDefault());
     cell.addEventListener("drop", () => {
-      cell.classList.remove("dragover");
       if (draggedBlock) {
         cell.appendChild(draggedBlock);
-        draggedBlock.style.top = "0px";
-        save();
+        draggedBlock.style.top = "0";
       }
     });
 
@@ -182,8 +146,8 @@ for (let i = 0; i < totalHours; i++) {
   });
 }
 
-// ---------- BLOCK ----------
-function createBlock(nameOverride, durationOverride) {
+/* ---------- Block Creation ---------- */
+function createBlock(nameOverride, durationOverride, colorOverride) {
   const name = nameOverride || document.getElementById("blockName").value.trim();
   const duration = durationOverride || parseInt(document.getElementById("blockDuration").value);
 
@@ -191,109 +155,34 @@ function createBlock(nameOverride, durationOverride) {
 
   const block = document.createElement("div");
   block.className = "block";
-  block.style.height = duration * hourHeight + "px";
-  block.style.background = colorFromName(name);
   block.draggable = true;
 
-  const header = document.createElement("div");
-  header.className = "block-header";
+  const color = colorOverride || getColor(name);
+  block.style.background = color;
+  block.style.height = `${hourHeight * duration}px`;
 
-  const title = document.createElement("span");
-  title.textContent = name;
-  title.contentEditable = true;
+  block.dataset.name = name;
+  block.dataset.duration = duration;
+  block.dataset.color = color;
 
-  title.addEventListener("input", () => {
-    block.style.background = colorFromName(title.textContent);
-    updateContent(block);
-    save();
-  });
-
-  const controls = document.createElement("div");
-  controls.className = "block-controls";
-
-  const dup = document.createElement("button");
-  dup.textContent = "⧉";
-  dup.onclick = () => {
-    createBlock(title.textContent, block.dataset.hours);
-  };
-
-  controls.appendChild(dup);
-  header.appendChild(title);
-  header.appendChild(controls);
-
-  const content = document.createElement("div");
-  content.className = "block-content";
-
-  const resize = document.createElement("div");
-  resize.className = "resize-handle";
-
-  resize.addEventListener("mousedown", e => {
-    resizingBlock = block;
-    e.preventDefault();
-  });
-
-  block.append(header, content, resize);
-  block.dataset.hours = duration;
+  updateBlockText(block);
 
   block.addEventListener("dragstart", () => draggedBlock = block);
-  block.addEventListener("dragend", () => draggedBlock = null);
 
-  document.querySelector(".cell").appendChild(block);
-  updateContent(block);
-  save();
-}
+  block.addEventListener("dblclick", () => {
+    const newName = prompt("Edit block name:", block.dataset.name);
+    if (newName) {
+      block.dataset.name = newName;
+      block.style.background = getColor(newName);
+      updateBlockText(block);
+    }
+  });
 
-// ---------- RESIZE ----------
-document.addEventListener("mousemove", e => {
-  if (!resizingBlock) return;
-  const h = Math.round(e.movementY / hourHeight);
-  let hours = Math.max(1, Math.min(8, parseInt(resizingBlock.dataset.hours) + h));
-  if (![1,2,8].includes(hours)) hours = hours < 2 ? 1 : hours < 8 ? 2 : 8;
-  resizingBlock.dataset.hours = hours;
-  resizingBlock.style.height = hours * hourHeight + "px";
-  updateContent(resizingBlock);
-});
-
-document.addEventListener("mouseup", () => {
-  if (resizingBlock) save();
-  resizingBlock = null;
-});
-
-// ---------- CONTENT ----------
-function updateContent(block) {
-  const name = block.querySelector("span").textContent;
-  const hours = parseInt(block.dataset.hours);
-  const cell = block.parentElement;
-  const index = [...timetable.children].indexOf(cell);
-  const hourIndex = Math.floor((index - 8) / 7);
-  let text = "";
-  for (let i = 0; i < hours; i++) {
-    text += `${formatHour(startHour + hourIndex + i)} – ${name}<br>`;
-  }
-  block.querySelector(".block-content").innerHTML = text;
-}
-
-// ---------- SAVE / LOAD ----------
-function save() {
-  localStorage.setItem("timetable", timetable.innerHTML);
-}
-
-const saved = localStorage.getItem("timetable");
-if (saved) timetable.innerHTML = saved;
-
-// ---------- UTIL ----------
-function formatHour(h) {
-  const suffix = h >= 12 ? "PM" : "AM";
-  const display = h > 12 ? h - 12 : h;
-  return `${display}:00 ${suffix}`;
-}
-
-function colorFromName(name) {
-  let hash = 0;
-  for (let c of name) hash = c.charCodeAt(0) + ((hash << 5) - hash);
-  return `hsl(${Math.abs(hash) % 360}, 75%, 85%)`;
-}
-</script>
-
-</body>
-</html>
+  const dupBtn = document.createElement("button");
+  dupBtn.textContent = "Duplicate";
+  dupBtn.onclick = e => {
+    e.stopPropagation();
+    createBlock(
+      block.dataset.name,
+      parseInt(block.dataset.duration),
+      block.dataset.color
