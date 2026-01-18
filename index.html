@@ -1,147 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Weekly Timetable Generator</title>
+<meta charset="UTF-8">
+<title>Weekly Timetable (Drag & Drop)</title>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f9fafb;
-    }
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f9fafb;
+    padding: 20px;
+  }
 
-    h1 {
-      margin-bottom: 10px;
-    }
+  h1 {
+    margin-bottom: 10px;
+  }
 
-    .form {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      max-width: 400px;
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      margin-bottom: 30px;
-    }
+  .timetable {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    gap: 5px;
+  }
 
-    label {
-      font-size: 14px;
-    }
+  .time {
+    font-size: 12px;
+    text-align: right;
+    padding-right: 5px;
+    color: #555;
+  }
 
-    input {
-      padding: 6px;
-    }
+  .day-header {
+    text-align: center;
+    font-weight: bold;
+    padding: 5px;
+  }
 
-    button {
-      grid-column: span 2;
-      padding: 10px;
-      cursor: pointer;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 15px;
-    }
+  .cell {
+    background: white;
+    min-height: 50px;
+    border-radius: 6px;
+    padding: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
 
-    button:hover {
-      background: #1e40af;
-    }
+  .block {
+    background: #dbeafe;
+    border-radius: 4px;
+    padding: 5px;
+    cursor: grab;
+    font-size: 12px;
+  }
 
-    .timetable {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
-    }
+  .block:active {
+    cursor: grabbing;
+  }
 
-    .day {
-      background: white;
-      border-radius: 8px;
-      padding: 10px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .day h3 {
-      text-align: center;
-      margin: 5px 0 10px;
-    }
-
-    .block {
-      padding: 6px;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      font-size: 13px;
-    }
-
-    .sleep { background: #dbeafe; }
-    .work  { background: #dcfce7; }
-    .free  { background: #fef9c3; }
-  </style>
+  .cell.dragover {
+    outline: 2px dashed #2563eb;
+  }
+</style>
 </head>
 
 <body>
 
-  <h1>Weekly Timetable Generator</h1>
-  <p>Enter your routine and generate your week</p>
+<h1>Weekly Timetable (Drag & Drop)</h1>
+<p>Drag blocks between days and time slots</p>
 
-  <div class="form">
-    <label>Work Start</label>
-    <input type="time" id="workStart" value="09:00">
+<div id="timetable" class="timetable"></div>
 
-    <label>Work End</label>
-    <input type="time" id="workEnd" value="17:00">
+<script>
+const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const startHour = 10;
+const totalHours = 12; // 10:00 → 22:00
 
-    <label>Sleep Start</label>
-    <input type="time" id="sleepStart" value="22:00">
+const timetable = document.getElementById("timetable");
+let draggedBlock = null;
 
-    <label>Sleep End</label>
-    <input type="time" id="sleepEnd" value="07:00">
+// Build header row
+timetable.appendChild(document.createElement("div"));
+days.forEach(day => {
+  const header = document.createElement("div");
+  header.className = "day-header";
+  header.textContent = day;
+  timetable.appendChild(header);
+});
 
-    <button onclick="generate()">Generate Timetable</button>
-  </div>
+// Build time rows
+for (let i = 0; i < totalHours; i++) {
+  const hour = startHour + i;
+  const timeLabel = document.createElement("div");
+  timeLabel.className = "time";
+  timeLabel.textContent = formatHour(hour);
+  timetable.appendChild(timeLabel);
 
-  <div id="timetable" class="timetable"></div>
+  days.forEach(() => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.addEventListener("dragover", e => {
+      e.preventDefault();
+      cell.classList.add("dragover");
+    });
+    cell.addEventListener("dragleave", () => {
+      cell.classList.remove("dragover");
+    });
+    cell.addEventListener("drop", () => {
+      cell.classList.remove("dragover");
+      if (draggedBlock) {
+        cell.innerHTML = "";
+        cell.appendChild(draggedBlock);
+      }
+    });
 
-  <script>
-    const days = [
-      "Monday","Tuesday","Wednesday",
-      "Thursday","Friday","Saturday","Sunday"
-    ];
-
-    function generate() {
-      const workStart = document.getElementById("workStart").value;
-      const workEnd = document.getElementById("workEnd").value;
-      const sleepStart = document.getElementById("sleepStart").value;
-      const sleepEnd = document.getElementById("sleepEnd").value;
-
-      const timetable = document.getElementById("timetable");
-      timetable.innerHTML = "";
-
-      days.forEach(day => {
-        const dayDiv = document.createElement("div");
-        dayDiv.className = "day";
-
-        dayDiv.innerHTML = `
-          <h3>${day}</h3>
-          <div class="block sleep">Sleep: ${sleepStart} – ${sleepEnd}</div>
-          <div class="block work">Work: ${workStart} – ${workEnd}</div>
-          <div class="block free">Free Time</div>
-        `;
-
-        timetable.appendChild(dayDiv);
-      });
-
-      localStorage.setItem("timetable", timetable.innerHTML);
+    // Add a sample block at Monday 10am
+    if (i === 0 && timetable.children.length === 9) {
+      cell.appendChild(createBlock("Work"));
     }
 
-    // Load saved timetable
-    const saved = localStorage.getItem("timetable");
-    if (saved) {
-      document.getElementById("timetable").innerHTML = saved;
-    }
-  </script>
+    timetable.appendChild(cell);
+  });
+}
+
+function createBlock(text) {
+  const block = document.createElement("div");
+  block.className = "block";
+  block.textContent = text;
+  block.draggable = true;
+
+  block.addEventListener("dragstart", () => {
+    draggedBlock = block;
+  });
+
+  block.addEventListener("dragend", () => {
+    draggedBlock = null;
+  });
+
+  return block;
+}
+
+function formatHour(hour) {
+  const h = hour % 24;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const display = h > 12 ? h - 12 : h;
+  return `${display}:00 ${suffix}`;
+}
+</script>
 
 </body>
 </html>
