@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Weekly Timetable (Drag & Drop)</title>
+<title>Weekly Timetable (Drag & Drop + Duplicate)</title>
 
 <style>
   body {
@@ -48,6 +48,7 @@
     padding: 5px;
     cursor: grab;
     font-size: 12px;
+    margin-bottom: 2px;
   }
 
   .block:active {
@@ -62,8 +63,8 @@
 
 <body>
 
-<h1>Weekly Timetable (Drag & Drop)</h1>
-<p>Drag blocks between days and time slots</p>
+<h1>Weekly Timetable (Drag & Drop + Duplicate)</h1>
+<p>Left-click a block to duplicate it, drag blocks between days and time slots</p>
 
 <div id="timetable" class="timetable"></div>
 
@@ -76,7 +77,7 @@ const timetable = document.getElementById("timetable");
 let draggedBlock = null;
 
 // Build header row
-timetable.appendChild(document.createElement("div"));
+timetable.appendChild(document.createElement("div")); // top-left empty
 days.forEach(day => {
   const header = document.createElement("div");
   header.className = "day-header";
@@ -95,17 +96,19 @@ for (let i = 0; i < totalHours; i++) {
   days.forEach(() => {
     const cell = document.createElement("div");
     cell.className = "cell";
+
     cell.addEventListener("dragover", e => {
       e.preventDefault();
       cell.classList.add("dragover");
     });
+
     cell.addEventListener("dragleave", () => {
       cell.classList.remove("dragover");
     });
+
     cell.addEventListener("drop", () => {
       cell.classList.remove("dragover");
       if (draggedBlock) {
-        cell.innerHTML = "";
         cell.appendChild(draggedBlock);
       }
     });
@@ -119,23 +122,30 @@ for (let i = 0; i < totalHours; i++) {
   });
 }
 
+// Create a block
 function createBlock(text) {
   const block = document.createElement("div");
   block.className = "block";
   block.textContent = text;
   block.draggable = true;
 
-  block.addEventListener("dragstart", () => {
-    draggedBlock = block;
-  });
+  // Drag & drop handlers
+  block.addEventListener("dragstart", () => { draggedBlock = block; });
+  block.addEventListener("dragend", () => { draggedBlock = null; });
 
-  block.addEventListener("dragend", () => {
-    draggedBlock = null;
+  // ✅ Left-click duplication
+  block.addEventListener("click", (e) => {
+    // prevent triggering while dragging
+    if (!e.ctrlKey && !e.shiftKey) {
+      const duplicate = createBlock(block.textContent);
+      block.parentElement.appendChild(duplicate);
+    }
   });
 
   return block;
 }
 
+// Format hours like 10:00 AM
 function formatHour(hour) {
   const h = hour % 24;
   const suffix = h >= 12 ? "PM" : "AM";
