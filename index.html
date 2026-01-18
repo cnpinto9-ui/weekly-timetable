@@ -67,11 +67,10 @@
         }
 
         .event-cell:hover {
-            background: #f8f9fa;
+            opacity: 0.9;
         }
 
         .event-cell.has-event {
-            background: #3498db;
             color: white;
         }
 
@@ -80,8 +79,7 @@
         }
 
         .event-cell.drag-over {
-            background: #2ecc71;
-            border: 2px dashed #27ae60;
+            border: 3px dashed #27ae60;
         }
 
         .event-cell.dragging {
@@ -458,74 +456,57 @@
                     eventColors: eventColors,
                     colorIndex: colorIndex
                 });
-                // Try Claude's storage first, fallback to localStorage
-                if (window.storage) {
-                    window.storage.set('weekly-timetable', data).catch(() => {
-                        localStorage.setItem('weekly-timetable', data);
-                    });
-                } else {
-                    localStorage.setItem('weekly-timetable', data);
-                }
+                localStorage.setItem('weekly-timetable', data);
             } catch (error) {
                 console.error('Error saving timetable:', error);
             }
         }
 
-        async function loadFromStorage() {
+        function loadFromStorage() {
             try {
-                let data = null;
-                
-                // Try localStorage first for GitHub Pages
                 const stored = localStorage.getItem('weekly-timetable');
-                if (stored) {
-                    data = JSON.parse(stored);
-                } else if (window.storage) {
-                    // Try Claude's storage if localStorage is empty
-                    const result = await window.storage.get('weekly-timetable');
-                    if (result && result.value) {
-                        data = JSON.parse(result.value);
-                    }
+                if (!stored) return;
+                
+                const data = JSON.parse(stored);
+                
+                // Load timetable data
+                const timetableData = data.timetable || data;
+                
+                // Load colors if available
+                if (data.eventColors) {
+                    Object.assign(eventColors, data.eventColors);
+                }
+                if (data.colorIndex !== undefined) {
+                    colorIndex = data.colorIndex;
                 }
                 
-                if (data) {
-                    // Load timetable data
-                    const timetableData = data.timetable || data;
-                    
-                    // Load colors if available
-                    if (data.eventColors) {
-                        Object.assign(eventColors, data.eventColors);
-                    }
-                    if (data.colorIndex !== undefined) {
-                        colorIndex = data.colorIndex;
-                    }
-                    
-                    Object.keys(timetableData).forEach(day => {
-                        Object.keys(timetableData[day]).forEach(time => {
-                            const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
-                            if (cell && timetableData[day][time]) {
-                                timetable[day][time] = timetableData[day][time];
-                                updateCell(cell, timetableData[day][time]);
-                            }
-                        });
+                Object.keys(timetableData).forEach(day => {
+                    Object.keys(timetableData[day]).forEach(time => {
+                        const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
+                        if (cell && timetableData[day][time]) {
+                            timetable[day][time] = timetableData[day][time];
+                            updateCell(cell, timetableData[day][time]);
+                        }
                     });
-                }
+                });
             } catch (error) {
                 console.log('No saved timetable found, starting fresh');
             }
         }
 
         // Close modal when clicking outside
-        document.getElementById('modal').addEventListener('click', (e) => {
+        document.getElementById('modal').addEventListener('click', function(e) {
             if (e.target.id === 'modal') closeModal();
         });
 
         // Close modal with Escape key
-        document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeModal();
             }
         });
 
+        // Initialize
         initTimetable();
 
         // Set up button event listeners
