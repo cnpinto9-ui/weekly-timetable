@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Weekly Timetable (Drag & Drop + Middle-click Duplicate)</title>
+<title>Weekly Timetable (Drag & Drop)</title>
 
 <style>
   body {
@@ -45,3 +45,10 @@
   .block {
     background: #dbeafe;
     border-radius: 4px;
+    padding: 5px;
+    cursor: grab;
+    font-size: 12px;
+  }
+
+  .block:active {
+    cursor: grabbing;
