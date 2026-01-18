@@ -1,115 +1,332 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Weekly Timetable (Drag & Drop)</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Timetable</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #f9fafb;
-    padding: 20px;
-  }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
 
-  h1 {
-    margin-bottom: 10px;
-  }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
 
-  .timetable {
-    display: grid;
-    grid-template-columns: 80px repeat(7, 1fr);
-    gap: 5px;
-  }
+        h1 {
+            text-align: center;
+            padding: 20px;
+            background: #2c3e50;
+            color: white;
+        }
 
-  .time {
-    font-size: 12px;
-    text-align: right;
-    padding-right: 5px;
-    color: #555;
-  }
+        .timetable {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+            overflow-x: auto;
+        }
 
-  .day-header {
-    text-align: center;
-    font-weight: bold;
-    padding: 5px;
-  }
+        .header {
+            background: #34495e;
+            color: white;
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #2c3e50;
+        }
 
-  .cell {
-    background: white;
-    min-height: 50px;
-    border-radius: 6px;
-    padding: 5px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
+        .time-cell {
+            background: #ecf0f1;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            border: 1px solid #bdc3c7;
+            font-weight: bold;
+        }
 
-  .block {
-    background: #dbeafe;
-    border-radius: 4px;
-    padding: 5px;
-    cursor: grab;
-    font-size: 12px;
-  }
+        .event-cell {
+            min-height: 60px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+        }
 
-  .block:active {
-    cursor: grabbing;
-  }
+        .event-cell:hover {
+            background: #f8f9fa;
+        }
 
-  .cell.dragover {
-    outline: 2px dashed #2563eb;
-  }
-</style>
+        .event-cell.has-event {
+            background: #3498db;
+            color: white;
+        }
+
+        .event-content {
+            font-size: 13px;
+            word-wrap: break-word;
+            height: 100%;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .save-btn {
+            background: #27ae60;
+            color: white;
+        }
+
+        .save-btn:hover {
+            background: #229954;
+        }
+
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+
+        .cancel-btn {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .cancel-btn:hover {
+            background: #7f8c8d;
+        }
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <h1>Weekly Timetable</h1>
+        <div class="timetable" id="timetable"></div>
+    </div>
 
-<h1>Weekly Timetable (Drag & Drop)</h1>
-<p>Drag blocks between days and time slots</p>
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Edit Event</h2>
+            <textarea id="event-input" placeholder="Enter event details..."></textarea>
+            <div class="button-group">
+                <button class="save-btn" onclick="saveEvent()">Save</button>
+                <button class="delete-btn" onclick="deleteEvent()">Delete</button>
+                <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-<div id="timetable" class="timetable"></div>
+    <script>
+        const days = ['Time', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const times = [];
+        
+        // Generate times from 10 AM to 12 AM (midnight)
+        for (let i = 10; i <= 23; i++) {
+            const hour = i > 12 ? i - 12 : i;
+            const period = i >= 12 ? 'PM' : 'AM';
+            times.push(`${hour}:00 ${period}`);
+        }
+        times.push('12:00 AM');
 
-<script>
-const days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const startHour = 10;
-const totalHours = 12; // 10:00 → 22:00
+        const timetable = {};
+        let currentCell = null;
 
-const timetable = document.getElementById("timetable");
-let draggedBlock = null;
+        function initTimetable() {
+            const container = document.getElementById('timetable');
+            
+            // Create headers
+            days.forEach(day => {
+                const header = document.createElement('div');
+                header.className = 'header';
+                header.textContent = day;
+                container.appendChild(header);
+            });
 
-// Build header row
-timetable.appendChild(document.createElement("div"));
-days.forEach(day => {
-  const header = document.createElement("div");
-  header.className = "day-header";
-  header.textContent = day;
-  timetable.appendChild(header);
-});
+            // Create time slots
+            times.forEach(time => {
+                // Time label
+                const timeCell = document.createElement('div');
+                timeCell.className = 'time-cell';
+                timeCell.textContent = time;
+                container.appendChild(timeCell);
 
-// Build time rows
-for (let i = 0; i < totalHours; i++) {
-  const hour = startHour + i;
-  const timeLabel = document.createElement("div");
-  timeLabel.className = "time";
-  timeLabel.textContent = formatHour(hour);
-  timetable.appendChild(timeLabel);
+                // Create cells for each day
+                for (let i = 1; i < days.length; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'event-cell';
+                    cell.dataset.day = days[i];
+                    cell.dataset.time = time;
+                    cell.onclick = () => openModal(cell);
+                    
+                    const content = document.createElement('div');
+                    content.className = 'event-content';
+                    cell.appendChild(content);
+                    
+                    container.appendChild(cell);
+                    
+                    // Initialize timetable data
+                    if (!timetable[days[i]]) timetable[days[i]] = {};
+                    timetable[days[i]][time] = '';
+                }
+            });
 
-  days.forEach(() => {
-    const cell = document.createElement("div");
-    cell.className = "cell";
-    cell.addEventListener("dragover", e => {
-      e.preventDefault();
-      cell.classList.add("dragover");
-    });
-    cell.addEventListener("dragleave", () => {
-      cell.classList.remove("dragover");
-    });
-    cell.addEventListener("drop", () => {
-      cell.classList.remove("dragover");
-      if (draggedBlock) {
-        cell.innerHTML = "";
-        cell.appendChild(draggedBlock);
-      }
-    });
+            loadFromStorage();
+        }
 
-    // Add a sample block at Monday 10am
-    if (i === 0 && timetable.children.length === 9) {
-      cell.app
+        function openModal(cell) {
+            currentCell = cell;
+            const day = cell.dataset.day;
+            const time = cell.dataset.time;
+            const eventText = timetable[day][time] || '';
+            
+            document.getElementById('modal-title').textContent = `${day} - ${time}`;
+            document.getElementById('event-input').value = eventText;
+            document.getElementById('modal').classList.add('active');
+            document.getElementById('event-input').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            currentCell = null;
+        }
+
+        function saveEvent() {
+            if (!currentCell) return;
+            
+            const day = currentCell.dataset.day;
+            const time = currentCell.dataset.time;
+            const eventText = document.getElementById('event-input').value.trim();
+            
+            timetable[day][time] = eventText;
+            updateCell(currentCell, eventText);
+            saveToStorage();
+            closeModal();
+        }
+
+        function deleteEvent() {
+            if (!currentCell) return;
+            
+            const day = currentCell.dataset.day;
+            const time = currentCell.dataset.time;
+            
+            timetable[day][time] = '';
+            updateCell(currentCell, '');
+            saveToStorage();
+            closeModal();
+        }
+
+        function updateCell(cell, text) {
+            const content = cell.querySelector('.event-content');
+            content.textContent = text;
+            
+            if (text) {
+                cell.classList.add('has-event');
+            } else {
+                cell.classList.remove('has-event');
+            }
+        }
+
+        function saveToStorage() {
+            const data = JSON.stringify(timetable);
+            // Store in memory for this session
+            window.timetableData = data;
+        }
+
+        function loadFromStorage() {
+            if (window.timetableData) {
+                const data = JSON.parse(window.timetableData);
+                Object.keys(data).forEach(day => {
+                    Object.keys(data[day]).forEach(time => {
+                        const cell = document.querySelector(`[data-day="${day}"][data-time="${time}"]`);
+                        if (cell && data[day][time]) {
+                            timetable[day][time] = data[day][time];
+                            updateCell(cell, data[day][time]);
+                        }
+                    });
+                });
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') closeModal();
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        initTimetable();
+    </script>
+</body>
+</html>
